@@ -3,25 +3,26 @@ use cortex_m::interrupt::Mutex;
 use nrf51::RTC1;
 
 use hal::gpio::gpio::{
-    PIN10, PIN11, PIN12, PIN13, PIN14, PIN15, PIN4, PIN5, PIN6, PIN7, PIN8, PIN9, Parts, PIN,
+    PIN10, PIN11, PIN12, PIN13, PIN14, PIN15, PIN4, PIN5, PIN6, PIN7, PIN8, PIN9, PIN,
 };
 use hal::gpio::{Output, PushPull};
 use hal::prelude::*;
 
-//use alloc::arc::Arc;
-//use alloc::boxed::Box;
+use alloc::boxed::Box;
 use core::cell::RefCell;
-use core::ops::DerefMut;
+use core::ops::{Deref, DerefMut};
+use core::sync::atomic::AtomicBool;
 
 pub mod animation;
 pub mod image;
 
+use self::animation::Animate;
 pub use self::image::DisplayImage;
 use self::image::MatrixImage;
 
 pub struct Display {
     image: Option<MatrixImage>,
-    //    animator: Option<Box<animation::Animate>>,
+    animator: Option<Animator>,
 }
 
 struct Driver {
@@ -30,10 +31,35 @@ struct Driver {
     timer: RTC1,
 }
 
+pub struct Animator(Box<animation::Animate>);
+
+unsafe impl Send for Animator {}
+
+impl Deref for Animator {
+    type Target = Box<animation::Animate>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Animator {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Animator {
+    fn new(animator: impl animation::Animate + 'static) -> Self {
+        Animator(Box::new(animator))
+    }
+}
+
 type LED = PIN<Output<PushPull>>;
 
 pub static DISPLAY: Mutex<RefCell<Option<Display>>> = Mutex::new(RefCell::new(None));
 static DRIVER: Mutex<RefCell<Option<Driver>>> = Mutex::new(RefCell::new(None));
+static ANIMATION_DONE: AtomicBool = AtomicBool::new(false);
 
 pub fn init_display(
     row1: PIN13<Output<PushPull>>,
@@ -78,7 +104,7 @@ pub fn init_display(
 
         let mut display = Display {
             image: None,
-            //            animator: None,
+            animator: None,
         };
         *DISPLAY.borrow(cs).borrow_mut() = Some(display);
     })
@@ -100,12 +126,52 @@ pub fn refresh_display(current_row: &mut usize) {
             DISPLAY.borrow(cs).borrow_mut().deref_mut(),
             DRIVER.borrow(cs).borrow_mut().deref_mut(),
         ) {
+            if driver.is_animation_interrupt() {
+                driver.clear_animation_bit();
+                if let Some(ref mut animator) = display.animator {
+                    if let Some(frame) = animator.next_screen() {
+                        driver.set_animation_interrupt(frame.length);
+                        display.image = Some(frame.image.into());
+                    } else {
+                        driver.remove_animation_interrupt();
+                        display.image = None;
+                        ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
+                    }
+                } else {
+                    driver.remove_animation_interrupt();
+                    display.image = None;
+                    ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
+                }
+            }
             driver.refresh(display, *current_row, previous_row);
             driver.clear_tick_bit();
         }
     });
 
     *current_row = (*current_row + 1) % 3;
+}
+
+pub fn run_animation(mut animator: impl animation::Animate + 'static, block: bool) {
+    if let Some(frame) = animator.next_screen() {
+        cortex_m::interrupt::free(|cs| {
+            if let (Some(ref mut display), Some(ref mut driver)) = (
+                DISPLAY.borrow(cs).borrow_mut().deref_mut(),
+                DRIVER.borrow(cs).borrow_mut().deref_mut(),
+            ) {
+                ANIMATION_DONE.store(false, core::sync::atomic::Ordering::Relaxed);
+                let length = frame.length;
+                display.image = Some(frame.image.into());
+                display.animator = Some(Animator::new(animator));
+                driver.add_animation_interrupt();
+                driver.set_animation_interrupt(length);
+                driver.start_timer();
+            }
+        });
+
+        if block {
+            while !ANIMATION_DONE.load(core::sync::atomic::Ordering::Relaxed) {}
+        }
+    }
 }
 
 impl Display {
@@ -118,26 +184,9 @@ impl Display {
         });
     }
 
-    /*    pub fn run_animation(&mut self, mut animator: Box<dyn animation::Animate>) {
-        self.clear();
-        if let Some(frame) = animator.next_screen() {
-            self.image = Some(frame.image.into());
-            self.animator = Some(animator);
-
-            cortex_m::interrupt::free(|cs| match *DRIVER.borrow(cs).borrow_mut() {
-                Some(ref mut driver) => {
-                    driver.add_animation_interrupt();
-                    driver.set_animation_interrupt(frame.length);
-                    driver.start_timer();
-                }
-                None => panic!("Driver has not been initialized."),
-            })
-        }
-    } */
-
     pub fn clear(&mut self) {
         self.image = None;
-        //        self.animator = None;
+        self.animator = None;
     }
 }
 
@@ -204,7 +253,7 @@ impl Driver {
             None => {
                 self.clear();
                 self.stop_timer();
-                //                self.remove_animation_interrupt();
+                self.remove_animation_interrupt();
             }
         }
     }
@@ -218,13 +267,13 @@ impl Driver {
         self.timer.tasks_start.write(|w| unsafe { w.bits(1) });
     }
 
-    /*    fn add_animation_interrupt(&mut self) {
+    fn add_animation_interrupt(&mut self) {
         self.timer.intenset.write(|w| w.compare0().set_bit());
     }
 
     fn set_animation_interrupt(&mut self, delay: u32) {
         let current = self.timer.counter.read().counter().bits();
-        let next = (current + (delay * 2)) % ((2 ^ 24) - 1);
+        let next = (current + (delay / 5)) % ((2_u32.pow(24)) - 1);
         self.timer.cc[0].write(|w| unsafe { w.compare().bits(next) });
     }
 
@@ -232,9 +281,13 @@ impl Driver {
         self.timer.intenclr.write(|w| w.compare0().set_bit());
     }
 
+    fn is_animation_interrupt(&mut self) -> bool {
+        self.timer.events_compare[0].read().bits() == 1
+    }
+
     fn clear_animation_bit(&mut self) {
         self.timer.events_compare[0].reset();
-    }*/
+    }
 
     //fn add_tick_interrupt(&mut self) {}
 

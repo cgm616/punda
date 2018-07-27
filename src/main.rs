@@ -17,6 +17,7 @@ use alloc::alloc::Layout;
 use rt::ExceptionFrame;
 #[macro_use(interrupt)]
 extern crate nrf51;
+extern crate nb;
 extern crate nrf51_hal as hal;
 extern crate panic_semihosting;
 
@@ -28,6 +29,8 @@ use cortex_m::interrupt::Mutex;
 
 use nrf51::TIMER0;
 
+use alloc::boxed::Box;
+use alloc::prelude::*;
 use alloc::string::String;
 use alloc::string::ToString;
 use alloc_cortex_m::CortexMHeap;
@@ -96,24 +99,15 @@ fn main() -> ! {
             p.NVIC.clear_pending(nrf51::Interrupt::RTC1);
         }
 
-        let mut delay: Delay = Delay::new(p.TIMER0);
-
-        /*
-        display::run_animation(
-            display::ScrollingText::new("Hello, world!", 100),
-            &mut delay,
-        );
-
-        delay.delay_ms(1000u32);
-        */
+        let mut delay = Delay::new(p.TIMER0);
 
         loop {
             let temp = temp::measure_temp_float(&mut p.TEMP, temp::Degrees::Fahrenheit);
             let temp: String = format!("{:.2}", temp);
 
-            display::animation::run_animation(
-                display::animation::text::ScrollingText::new(&temp, 100),
-                &mut delay,
+            display::run_animation(
+                display::animation::text::ScrollingText::new("Hello, world!".to_owned(), 100),
+                true,
             );
         }
     }

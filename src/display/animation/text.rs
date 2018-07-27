@@ -1,7 +1,9 @@
+use alloc::string::String;
+
 use super::{super::DisplayImage, Animate, Frame};
 
-pub struct ScrollingText<'a> {
-    text: &'a str,
+pub struct ScrollingText {
+    text: String,
     text_index: usize,
     column_index: Column,
     speed: u32,
@@ -158,8 +160,8 @@ impl From<Letter> for DisplayImage {
 
 include!("letters.rs");
 
-impl<'a> ScrollingText<'a> {
-    pub const fn new(text: &'a str, speed: u32) -> Self {
+impl ScrollingText {
+    pub fn new(text: String, speed: u32) -> Self {
         ScrollingText {
             text: text,
             text_index: 0,
@@ -243,7 +245,7 @@ impl<'a> ScrollingText<'a> {
     }
 }
 
-impl<'a> Animate for ScrollingText<'a> {
+impl Animate for ScrollingText {
     fn next_screen(&mut self) -> Option<Frame> {
         let (current, next) = if self.text_index == 0 && !self.scrolled_on {
             (
@@ -620,6 +622,9 @@ impl<'a> Animate for ScrollingText<'a> {
                     self.scrolled_on = true;
                 } else {
                     self.text_index = self.text_index + 1;
+                }
+                if self.text_index >= self.text.len() {
+                    return None;
                 }
                 let fourth__last_column = match next.get_column(0) {
                     Some(column) => column,
