@@ -23,7 +23,6 @@ extern crate panic_semihosting;
 
 use hal::delay::Delay;
 use hal::prelude::*;
-use hal::serial::{self, Serial, BAUDRATEW};
 
 use cortex_m::interrupt::Mutex;
 
@@ -39,13 +38,26 @@ use core::cell::RefCell;
 use core::fmt::Write;
 use core::ops::DerefMut;
 
-mod display;
-mod temp;
+pub mod display;
+pub mod serial;
+pub mod temp;
 
 use display::Display;
 
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
+#[macro_export]
+macro_rules! start {
+    ($path:ident) => {
+        #[export_name = "begin"]
+        pub extern "C" fn __impl_begin() -> ! {
+            let f: fn() -> ! = $path;
+
+            f()
+        }
+    };
+}
 
 exception!(HardFault, hard_fault);
 
@@ -59,9 +71,13 @@ fn default_handler(irqn: i16) {
     panic!("Unhandled exception (IRQn = {})", irqn);
 }
 
-entry!(main);
+entry!(__start);
 
-fn main() -> ! {
+fn __start() -> ! {
+    extern "C" {
+        fn begin() -> !;
+    }
+
     let start = rt::heap_start() as usize;
     let size = 1024; // in bytes
     unsafe {
@@ -94,60 +110,23 @@ fn main() -> ! {
             column8, column9, p.RTC1,
         );
 
+        let txpin = gpio.pin24.into_push_pull_output();
+        let rxpin = gpio.pin25.into_floating_input();
+
+        serial::init_serial(p.UART0, txpin, rxpin);
+
         if let Some(mut p) = cortex_m::peripheral::Peripherals::take() {
             p.NVIC.enable(nrf51::Interrupt::RTC1);
             p.NVIC.clear_pending(nrf51::Interrupt::RTC1);
         }
 
-        let mut delay = Delay::new(p.TIMER0);
-
-        loop {
-            let temp = temp::measure_temp_float(&mut p.TEMP, temp::Degrees::Fahrenheit);
-            let temp: String = format!("{:.2}", temp);
-
-            display::run_animation(
-                display::animation::text::ScrollingText::new("Hello, world!".to_owned(), 100),
-                true,
-            );
+        unsafe {
+            begin();
         }
     }
 
     loop {}
 }
-
-/*
-interrupt! {
-    RTC1,
-    tick,
-    state: u32 = 0
-}
-
-#[no_mangle]
-pub fn tick(count: &mut u32) {
-    cortex_m::interrupt::free(|cs| {
-        *count = *count + 1;
-
-        if let (Some(ref mut tx), Some(ref mut rtc)) = (
-            TX.borrow(cs).borrow_mut().deref_mut(),
-            RTC.borrow(cs).borrow_mut().deref_mut(),
-        ) {
-            if *count % 8 == 0 {
-                print_regs(tx);
-            }
-            rtc.events_tick.write(|w| unsafe { w.bits(0) });
-        }
-    });
-}
-
-fn print_regs(tx: &mut serial::Tx<nrf51::UART0>) {
-    let control_reg = cortex_m::register::control::read();
-    let _ = write!(tx, "\n\rUsing {:?} for stack\n\r", control_reg.spsel());
-    let stack_pointer = cortex_m::register::msp::read();
-    let _ = write!(tx, "Stack pointer is: {:x}\n\r", stack_pointer);
-    let pc = cortex_m::register::pc::read();
-    let _ = write!(tx, "Program counter is: {:x}\n\r", pc);
-}
-*/
 
 #[lang = "oom"]
 #[no_mangle]
