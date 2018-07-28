@@ -152,6 +152,19 @@ pub fn refresh_display(current_row: &mut usize) {
     *current_row = (*current_row + 1) % 3;
 }
 
+pub fn display_image(img: impl Into<DisplayImage>) {
+    cortex_m::interrupt::free(|cs| {
+        if let (Some(ref mut display), Some(ref mut driver)) = (
+            DISPLAY.borrow(cs).borrow_mut().deref_mut(),
+            DRIVER.borrow(cs).borrow_mut().deref_mut(),
+        ) {
+            clear(display);
+            display.image = Some(img.into().into());
+            driver.start_timer();
+        }
+    });
+}
+
 pub fn run_animation(mut animator: impl animation::Animate + 'static, block: bool) {
     if let Some(frame) = animator.next_screen() {
         cortex_m::interrupt::free(|cs| {
@@ -175,20 +188,9 @@ pub fn run_animation(mut animator: impl animation::Animate + 'static, block: boo
     }
 }
 
-impl Display {
-    pub fn display_image(&mut self, img: impl Into<DisplayImage>) {
-        self.clear();
-        self.image = Some(img.into().into());
-        cortex_m::interrupt::free(|cs| match *DRIVER.borrow(cs).borrow_mut() {
-            Some(ref mut driver) => driver.start_timer(),
-            None => panic!("Driver has not been initialized."),
-        });
-    }
-
-    pub fn clear(&mut self) {
-        self.image = None;
-        self.animator = None;
-    }
+pub fn clear(display: &mut Display) {
+    display.image = None;
+    display.animator = None;
 }
 
 impl Driver {
