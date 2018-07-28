@@ -14,6 +14,7 @@ use core::ops::{Deref, DerefMut};
 use core::sync::atomic::AtomicBool;
 
 pub mod animation;
+pub mod constant;
 pub mod image;
 
 use self::animation::Animate;

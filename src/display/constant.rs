@@ -1,3 +1,5 @@
+use super::image::DisplayImage;
+
 pub const CHECKERBOARD: DisplayImage = DisplayImage([
     [true, false, true, false, true],
     [false, true, false, true, false],
