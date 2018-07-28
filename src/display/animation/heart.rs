@@ -54,7 +54,7 @@ impl Animate for Heart {
             _ => None,
         };
 
-        self.0 = (self.0 + 1) % 4;
+        self.0 = (self.0 + 1);
 
         frame
     }
