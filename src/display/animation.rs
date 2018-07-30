@@ -1,5 +1,3 @@
-use hal;
-
 use super::DisplayImage;
 
 pub mod heart;

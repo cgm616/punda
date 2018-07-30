@@ -20,7 +20,7 @@ pub fn init_serial(uart: UART0, txpin: PIN24<Output<PushPull>>, rxpin: PIN25<Inp
         rxpin.downgrade(),
         serial::BAUDRATEW::BAUD115200,
     );
-    let (mut tx, mut rx) = serial.split();
+    let (tx, rx) = serial.split();
 
     cortex_m::interrupt::free(|cs| {
         *TX.borrow(cs).borrow_mut() = Some(tx);

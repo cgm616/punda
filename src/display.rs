@@ -17,7 +17,6 @@ pub mod animation;
 pub mod constant;
 pub mod image;
 
-use self::animation::Animate;
 pub use self::image::DisplayImage;
 use self::image::MatrixImage;
 
@@ -103,7 +102,7 @@ pub fn init_display(
         driver.clear();
         *DRIVER.borrow(cs).borrow_mut() = Some(driver);
 
-        let mut display = Display {
+        let display = Display {
             image: None,
             animator: None,
         };
@@ -111,8 +110,7 @@ pub fn init_display(
     })
 }
 
-#[no_mangle]
-pub fn refresh_display(current_row: &mut usize) {
+crate fn refresh_display(current_row: &mut usize) {
     // Figure out the previous row index so we can turn it off. I'm
     // pretty sure there's a better way to do this, but I don't know
     // what it is.

@@ -7,7 +7,6 @@
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 
-#[macro_use(format)]
 extern crate alloc;
 extern crate alloc_cortex_m;
 extern crate cortex_m;
@@ -21,28 +20,13 @@ extern crate nb;
 extern crate nrf51_hal as hal;
 extern crate panic_semihosting;
 
-use hal::delay::Delay;
 use hal::prelude::*;
 
-use cortex_m::interrupt::Mutex;
-
-use nrf51::TIMER0;
-
-use alloc::boxed::Box;
-use alloc::prelude::*;
-use alloc::string::String;
-use alloc::string::ToString;
 use alloc_cortex_m::CortexMHeap;
-
-use core::cell::RefCell;
-use core::fmt::Write;
-use core::ops::DerefMut;
 
 pub mod display;
 pub mod serial;
 pub mod temp;
-
-use display::Display;
 
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
@@ -84,7 +68,7 @@ fn __start() -> ! {
         ALLOCATOR.init(start, size);
     }
 
-    if let Some(mut p) = nrf51::Peripherals::take() {
+    if let Some(p) = nrf51::Peripherals::take() {
         p.CLOCK.tasks_lfclkstart.write(|w| unsafe { w.bits(1) });
         while p.CLOCK.events_lfclkstarted.read().bits() == 0 {}
         p.CLOCK.events_lfclkstarted.write(|w| unsafe { w.bits(0) });
