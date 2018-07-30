@@ -25,6 +25,8 @@ use hal::prelude::*;
 use alloc_cortex_m::CortexMHeap;
 
 pub mod display;
+pub mod gpio;
+mod queue;
 pub mod serial;
 pub mod temp;
 
@@ -99,9 +101,16 @@ fn __start() -> ! {
 
         serial::init_serial(p.UART0, txpin, rxpin);
 
+        let a_pin = gpio.pin17.into_floating_input();
+        let b_pin = gpio.pin26.into_floating_input();
+
+        gpio::init_buttons(a_pin, b_pin, p.GPIOTE);
+
         if let Some(mut p) = cortex_m::peripheral::Peripherals::take() {
             p.NVIC.enable(nrf51::Interrupt::RTC1);
+            p.NVIC.enable(nrf51::Interrupt::GPIOTE);
             p.NVIC.clear_pending(nrf51::Interrupt::RTC1);
+            p.NVIC.clear_pending(nrf51::Interrupt::GPIOTE);
         }
 
         unsafe {
@@ -122,4 +131,9 @@ interrupt! {
     RTC1,
     display::refresh_display,
     state: usize = 0
+}
+
+interrupt! {
+    GPIOTE,
+    gpio::gpiote_handler
 }
