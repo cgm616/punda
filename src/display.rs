@@ -13,6 +13,8 @@ use core::cell::RefCell;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::AtomicBool;
 
+use super::rtc::{self, RTCInterrupt};
+
 pub mod animation;
 pub mod constant;
 pub mod image;
@@ -28,12 +30,14 @@ pub struct Display {
 struct Driver {
     rows: [LED; 3],
     columns: [LED; 9],
-    timer: RTC1,
+    current_row: usize,
+    next_animation: u32,
+    animating: bool,
 }
 
 pub struct Animator(Box<animation::Animate>);
 
-unsafe impl Send for Animator {}
+unsafe impl Send for Animator {} // TODO: fix this, definitely unsafe here
 
 impl Deref for Animator {
     type Target = Box<animation::Animate>;
@@ -74,30 +78,11 @@ pub fn init_display(
     column7: PIN10<Output<PushPull>>,
     column8: PIN11<Output<PushPull>>,
     column9: PIN12<Output<PushPull>>,
-    timer: RTC1,
 ) {
-    timer.prescaler.write(|w| unsafe { w.bits(163) });
-    timer.evtenset.write(|w| w.tick().set_bit());
-    timer.intenclr.write(|w| {
-        w.tick()
-            .set_bit()
-            .ovrflw()
-            .set_bit()
-            .compare0()
-            .set_bit()
-            .compare1()
-            .set_bit()
-            .compare2()
-            .set_bit()
-            .compare3()
-            .set_bit()
-    });
-    timer.intenset.write(|w| w.tick().set_bit());
-
     cortex_m::interrupt::free(|cs| {
         let mut driver = Driver::new(
             row1, row2, row3, column1, column2, column3, column4, column5, column6, column7,
-            column8, column9, timer,
+            column8, column9,
         );
         driver.clear();
         *DRIVER.borrow(cs).borrow_mut() = Some(driver);
@@ -110,55 +95,49 @@ pub fn init_display(
     })
 }
 
-crate fn refresh_display(current_row: &mut usize) {
+crate fn refresh_display(counter: u32) {
     // Figure out the previous row index so we can turn it off. I'm
     // pretty sure there's a better way to do this, but I don't know
     // what it is.
-    let previous_row = match current_row {
-        0 => 2,
-        1..=2 => *current_row - 1,
-        _ => panic!("Current row index not 0 through 2"),
-    };
-
     cortex_m::interrupt::free(|cs| {
         if let (Some(ref mut display), Some(ref mut driver)) = (
             DISPLAY.borrow(cs).borrow_mut().deref_mut(),
             DRIVER.borrow(cs).borrow_mut().deref_mut(),
         ) {
-            if driver.is_animation_interrupt() {
-                driver.clear_animation_bit();
+            if counter >= driver.next_animation && driver.animating {
                 if let Some(ref mut animator) = display.animator {
                     if let Some(frame) = animator.next_screen() {
-                        driver.set_animation_interrupt(frame.length);
+                        driver.set_next_animation(counter, frame.length);
                         display.image = Some(frame.image.into());
                     } else {
-                        driver.remove_animation_interrupt();
                         display.image = None;
                         ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
+                        driver.animating = false;
                     }
                 } else {
-                    driver.remove_animation_interrupt();
                     display.image = None;
                     ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
+                    driver.animating = false;
                 }
             }
-            driver.refresh(display, *current_row, previous_row);
-            driver.clear_tick_bit();
+
+            driver.refresh(display);
+            driver.current_row = (driver.current_row + 1) % 3;
         }
     });
-
-    *current_row = (*current_row + 1) % 3;
 }
 
 pub fn display_image(img: impl Into<DisplayImage>) {
     cortex_m::interrupt::free(|cs| {
-        if let (Some(ref mut display), Some(ref mut driver)) = (
+        if let (Some(ref mut display), Some(ref mut driver), Some(ref mut scheduler)) = (
             DISPLAY.borrow(cs).borrow_mut().deref_mut(),
             DRIVER.borrow(cs).borrow_mut().deref_mut(),
+            rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut(),
         ) {
             clear(display);
             display.image = Some(img.into().into());
-            driver.start_timer();
+            scheduler.unset_interrupt(RTCInterrupt::Tick);
+            scheduler.set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display);
         }
     });
 }
@@ -166,17 +145,19 @@ pub fn display_image(img: impl Into<DisplayImage>) {
 pub fn run_animation(mut animator: impl animation::Animate + 'static, block: bool) {
     if let Some(frame) = animator.next_screen() {
         cortex_m::interrupt::free(|cs| {
-            if let (Some(ref mut display), Some(ref mut driver)) = (
+            if let (Some(ref mut display), Some(ref mut driver), Some(ref mut scheduler)) = (
                 DISPLAY.borrow(cs).borrow_mut().deref_mut(),
                 DRIVER.borrow(cs).borrow_mut().deref_mut(),
+                rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut(),
             ) {
                 ANIMATION_DONE.store(false, core::sync::atomic::Ordering::Relaxed);
                 let length = frame.length;
                 display.image = Some(frame.image.into());
                 display.animator = Some(Animator::new(animator));
-                driver.add_animation_interrupt();
-                driver.set_animation_interrupt(length);
-                driver.start_timer();
+                driver.animating = true;
+                driver.set_next_animation(scheduler.current_counter(), length);
+                scheduler.unset_interrupt(RTCInterrupt::Tick);
+                scheduler.set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display);
             }
         });
 
@@ -205,7 +186,6 @@ impl Driver {
         column7: PIN10<Output<PushPull>>,
         column8: PIN11<Output<PushPull>>,
         column9: PIN12<Output<PushPull>>,
-        timer: RTC1,
     ) -> Self {
         Driver {
             rows: [row1.downgrade(), row2.downgrade(), row3.downgrade()],
@@ -220,20 +200,28 @@ impl Driver {
                 column8.downgrade(),
                 column9.downgrade(),
             ],
-            timer: timer,
+            animating: false,
+            current_row: 0,
+            next_animation: 0,
         }
     }
 
-    fn refresh(&mut self, display: &mut Display, current_row: usize, previous_row: usize) {
+    fn refresh(&mut self, display: &mut Display) {
         // Match over the Option<MatrixImage>. If there is an image, display it;
         // otherwise clear the display.
         match display.image {
             Some(ref image) => {
+                let previous_row = match self.current_row {
+                    0 => 2,
+                    1..=2 => self.current_row - 1,
+                    _ => panic!("Current row not 0 through 2"),
+                };
+
                 // Turn off the previous row.
                 self.rows[previous_row].set_low();
 
                 // Obtain the current row in the image in the display.
-                let img_row = &image[current_row];
+                let img_row = &image[self.current_row];
 
                 // Iterate over each of the column pins in the driver and
                 // turn them on or off depending on the data in the image row.
@@ -249,12 +237,17 @@ impl Driver {
                     });
 
                 // Turn the current row on.
-                self.rows[current_row].set_high();
+                self.rows[self.current_row].set_high();
             }
             None => {
                 self.clear();
-                self.stop_timer();
-                self.remove_animation_interrupt();
+                cortex_m::interrupt::free(|cs| {
+                    if let Some(ref mut scheduler) =
+                        rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut()
+                    {
+                        scheduler.unset_interrupt(RTCInterrupt::Tick);
+                    }
+                })
             }
         }
     }
@@ -264,41 +257,7 @@ impl Driver {
         self.columns.iter_mut().for_each(|led| led.set_high());
     }
 
-    fn start_timer(&mut self) {
-        self.timer.tasks_start.write(|w| unsafe { w.bits(1) });
-    }
-
-    fn add_animation_interrupt(&mut self) {
-        self.timer.intenset.write(|w| w.compare0().set_bit());
-    }
-
-    fn set_animation_interrupt(&mut self, delay: u32) {
-        let current = self.timer.counter.read().counter().bits();
-        let next = (current + (delay / 5)) % ((2_u32.pow(24)) - 1);
-        self.timer.cc[0].write(|w| unsafe { w.compare().bits(next) });
-    }
-
-    fn remove_animation_interrupt(&mut self) {
-        self.timer.intenclr.write(|w| w.compare0().set_bit());
-    }
-
-    fn is_animation_interrupt(&mut self) -> bool {
-        self.timer.events_compare[0].read().bits() == 1
-    }
-
-    fn clear_animation_bit(&mut self) {
-        self.timer.events_compare[0].reset();
-    }
-
-    //fn add_tick_interrupt(&mut self) {}
-
-    //fn remove_tick_interrupt(&mut self) {}
-
-    fn stop_timer(&mut self) {
-        self.timer.tasks_stop.write(|w| unsafe { w.bits(1) });
-    }
-
-    fn clear_tick_bit(&mut self) {
-        self.timer.events_tick.reset();
+    fn set_next_animation(&mut self, current: u32, delay: u32) {
+        self.next_animation = (current + (delay / 5)) % (2_u32.pow(24) - 1);
     }
 }

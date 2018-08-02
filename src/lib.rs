@@ -1,4 +1,3 @@
-#![no_main]
 #![no_std]
 #![feature(extern_prelude)]
 #![feature(alloc)]
@@ -6,6 +5,7 @@
 #![feature(non_modrs_mods)]
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
+#![allow(dead_code)]
 
 extern crate alloc;
 extern crate alloc_cortex_m;
@@ -26,7 +26,7 @@ use alloc_cortex_m::CortexMHeap;
 
 pub mod display;
 pub mod gpio;
-mod queue;
+mod rtc;
 pub mod serial;
 pub mod temp;
 
@@ -75,6 +75,8 @@ fn __start() -> ! {
         while p.CLOCK.events_lfclkstarted.read().bits() == 0 {}
         p.CLOCK.events_lfclkstarted.write(|w| unsafe { w.bits(0) });
 
+        rtc::init_scheduler(p.RTC1);
+
         let gpio = p.GPIO.split();
 
         let row1 = gpio.pin13.into_push_pull_output();
@@ -93,7 +95,7 @@ fn __start() -> ! {
 
         display::init_display(
             row1, row2, row3, column1, column2, column3, column4, column5, column6, column7,
-            column8, column9, p.RTC1,
+            column8, column9,
         );
 
         let txpin = gpio.pin24.into_push_pull_output();
@@ -129,8 +131,7 @@ pub fn rust_oom(_: Layout) -> ! {
 
 interrupt! {
     RTC1,
-    display::refresh_display,
-    state: usize = 0
+    rtc::handler
 }
 
 interrupt! {
