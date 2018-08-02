@@ -626,7 +626,7 @@ impl Animate for ScrollingText {
                 if self.text_index >= self.text.len() {
                     return None;
                 }
-                let fourth__last_column = match next.get_column(0) {
+                let fourth_last_column = match next.get_column(0) {
                     Some(column) => column,
                     None => panic!("Bad index on get_column()"),
                 };
@@ -647,35 +647,35 @@ impl Animate for ScrollingText {
                     image: DisplayImage([
                         [
                             false,
-                            fourth__last_column[0],
+                            fourth_last_column[0],
                             third_last_column[0],
                             second_last_column[0],
                             last_column[0],
                         ],
                         [
                             false,
-                            fourth__last_column[1],
+                            fourth_last_column[1],
                             third_last_column[1],
                             second_last_column[1],
                             last_column[1],
                         ],
                         [
                             false,
-                            fourth__last_column[2],
+                            fourth_last_column[2],
                             third_last_column[2],
                             second_last_column[2],
                             last_column[2],
                         ],
                         [
                             false,
-                            fourth__last_column[3],
+                            fourth_last_column[3],
                             third_last_column[3],
                             second_last_column[3],
                             last_column[3],
                         ],
                         [
                             false,
-                            fourth__last_column[4],
+                            fourth_last_column[4],
                             third_last_column[4],
                             second_last_column[4],
                             last_column[4],
