@@ -31,8 +31,6 @@ struct Driver {
     rows: [LED; 3],
     columns: [LED; 9],
     current_row: usize,
-    next_animation: u32,
-    animating: bool,
 }
 
 pub struct Animator(Box<animation::Animate>);
@@ -96,33 +94,47 @@ pub fn init_display(
 }
 
 crate fn refresh_display(counter: u32) {
-    // Figure out the previous row index so we can turn it off. I'm
-    // pretty sure there's a better way to do this, but I don't know
-    // what it is.
     cortex_m::interrupt::free(|cs| {
         if let (Some(ref mut display), Some(ref mut driver)) = (
             DISPLAY.borrow(cs).borrow_mut().deref_mut(),
             DRIVER.borrow(cs).borrow_mut().deref_mut(),
         ) {
-            if counter >= driver.next_animation && driver.animating {
-                if let Some(ref mut animator) = display.animator {
-                    if let Some(frame) = animator.next_screen() {
-                        driver.set_next_animation(counter, frame.length);
-                        display.image = Some(frame.image.into());
-                    } else {
-                        display.image = None;
-                        ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
-                        driver.animating = false;
-                    }
-                } else {
-                    display.image = None;
-                    ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
-                    driver.animating = false;
-                }
-            }
-
             driver.refresh(display);
             driver.current_row = (driver.current_row + 1) % 3;
+        }
+    });
+}
+
+crate fn refresh_animation(counter: u32) {
+    cortex_m::interrupt::free(|cs| {
+        if let (Some(ref mut display), Some(ref mut driver), Some(ref mut scheduler)) = (
+            DISPLAY.borrow(cs).borrow_mut().deref_mut(),
+            DRIVER.borrow(cs).borrow_mut().deref_mut(),
+            rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut(),
+        ) {
+            let mut unset = false;
+            if let Some(ref mut animator) = display.animator {
+                if let Some(frame) = animator.next_screen() {
+                    scheduler.unset_interrupt(RTCInterrupt::Compare0);
+                    scheduler.set_cmp_interrupt(
+                        RTCInterrupt::Compare0,
+                        refresh_animation,
+                        (counter + (frame.length / 5)) % (2_u32.pow(24) - 1),
+                    );
+                    display.image = Some(frame.image.into());
+                } else {
+                    scheduler.unset_interrupt(RTCInterrupt::Compare0);
+                    ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
+                    unset = true;
+                }
+            } else {
+                scheduler.unset_interrupt(RTCInterrupt::Compare0);
+                ANIMATION_DONE.store(true, core::sync::atomic::Ordering::Relaxed);
+            }
+
+            if unset {
+                display.animator = None;
+            }
         }
     });
 }
@@ -134,7 +146,7 @@ pub fn display_image(img: impl Into<DisplayImage>) {
             DRIVER.borrow(cs).borrow_mut().deref_mut(),
             rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut(),
         ) {
-            clear(display);
+            display.animator = None;
             display.image = Some(img.into().into());
             scheduler.unset_interrupt(RTCInterrupt::Tick);
             scheduler.set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display);
@@ -154,10 +166,13 @@ pub fn run_animation(mut animator: impl animation::Animate + 'static, block: boo
                 let length = frame.length;
                 display.image = Some(frame.image.into());
                 display.animator = Some(Animator::new(animator));
-                driver.animating = true;
-                driver.set_next_animation(scheduler.current_counter(), length);
+
                 scheduler.unset_interrupt(RTCInterrupt::Tick);
                 scheduler.set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display);
+
+                let compare = (scheduler.current_counter() + (length / 5)) % (2_u32.pow(24) - 1);
+                scheduler.unset_interrupt(RTCInterrupt::Compare0);
+                scheduler.set_cmp_interrupt(RTCInterrupt::Compare0, refresh_animation, compare);
             }
         });
 
@@ -165,11 +180,6 @@ pub fn run_animation(mut animator: impl animation::Animate + 'static, block: boo
             while !ANIMATION_DONE.load(core::sync::atomic::Ordering::Relaxed) {}
         }
     }
-}
-
-pub fn clear(display: &mut Display) {
-    display.image = None;
-    display.animator = None;
 }
 
 impl Driver {
@@ -200,9 +210,7 @@ impl Driver {
                 column8.downgrade(),
                 column9.downgrade(),
             ],
-            animating: false,
             current_row: 0,
-            next_animation: 0,
         }
     }
 
@@ -211,6 +219,9 @@ impl Driver {
         // otherwise clear the display.
         match display.image {
             Some(ref image) => {
+                // Figure out the previous row index so we can turn it off. I'm
+                // pretty sure there's a better way to do this, but I don't know
+                // what it is.
                 let previous_row = match self.current_row {
                     0 => 2,
                     1..=2 => self.current_row - 1,
@@ -255,9 +266,5 @@ impl Driver {
     fn clear(&mut self) {
         self.rows.iter_mut().for_each(|led| led.set_low());
         self.columns.iter_mut().for_each(|led| led.set_high());
-    }
-
-    fn set_next_animation(&mut self, current: u32, delay: u32) {
-        self.next_animation = (current + (delay / 5)) % (2_u32.pow(24) - 1);
     }
 }
