@@ -9,7 +9,7 @@ use m::serial;
 start!(main);
 
 fn main() -> ! {
-    serial::writeln(format_args!("Hello from Rust!"));
+    serial::writeln(format_args!("Hello from Rust!")).unwrap();
 
     loop {}
 }

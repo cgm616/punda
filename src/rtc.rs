@@ -152,14 +152,14 @@ impl Scheduler {
 
     crate fn set_available_compare(&mut self, f: Handler, compare: u32) -> Result<(), ()> {
         for i in 0..4 {
-            if let None = self.compare[i] {
+            if self.compare[i].is_none() {
                 self.set_cmp_interrupt(RTCInterrupt::compare_from_index(i).unwrap(), f, compare)
                     .unwrap();
                 return Ok(());
             }
         }
 
-        return Err(());
+        Err(())
     }
 
     crate fn event_fired(&self, interrupt: RTCInterrupt) -> bool {
