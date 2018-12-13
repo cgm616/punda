@@ -90,7 +90,7 @@ dependencies = [
  "nb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nrf51 0.5.2 (git+https://github.com/therealprof/nrf51.git)",
  "nrf51-hal 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "panic-semihosting 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "panic-semihosting 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -138,7 +138,7 @@ dependencies = [
 
 [[package]]
 name = "panic-semihosting"
-version = "0.3.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cortex-m 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -262,7 +262,7 @@ dependencies = [
 "checksum nb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "69f380b5fe9fab8c0d7a6a99cda23e2cc0463bedb2cbc3aada0813b98496ecdc"
 "checksum nrf51 0.5.2 (git+https://github.com/therealprof/nrf51.git)" = "<none>"
 "checksum nrf51-hal 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)" = "5851e70661f6bea0f1e65b5e66232b514b30fb89b88ab35b6bb2e0f4d683bdf3"
-"checksum panic-semihosting 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "52f64dcd9aebf9d40f8c40ab4400bab503c89997330b8d775c20f373bf0e13fc"
+"checksum panic-semihosting 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a647d81e7b00f69deac766cd96d69fc11c95c18657d2448b539ae93e4c558689"
 "checksum proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)" = "77619697826f31a02ae974457af0b29b723e5619e113e9397b8b82c6bd253f09"
 "checksum quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "53fa22a1994bd0f9372d7a816207d8a2677ad0325b073f5c5332760f0fb62b5c"
 "checksum r0 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e2a38df5b15c8d5c7e8654189744d8e396bddc18ad48041a500ce52d6948941f"
