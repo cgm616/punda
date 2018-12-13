@@ -3,7 +3,6 @@ use core::ops::{Deref, DerefMut};
 use cortex_m::interrupt::Mutex;
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 
 use hal::gpio::gpio::{PIN17, PIN26};
 use hal::gpio::{Floating, Input};
@@ -13,9 +12,9 @@ static GPIOTE: Mutex<RefCell<Option<GPIOTE>>> = Mutex::new(RefCell::new(None));
 static A_PIN: Mutex<RefCell<Option<PIN17<Input<Floating>>>>> = Mutex::new(RefCell::new(None));
 static B_PIN: Mutex<RefCell<Option<PIN26<Input<Floating>>>>> = Mutex::new(RefCell::new(None));
 
-static A_HANDLERS: Mutex<RefCell<Option<Vec<Handler>>>> = Mutex::new(RefCell::new(None));
-static B_HANDLERS: Mutex<RefCell<Option<Vec<Handler>>>> = Mutex::new(RefCell::new(None));
-static BOTH_HANDLERS: Mutex<RefCell<Option<Vec<Handler>>>> = Mutex::new(RefCell::new(None));
+static A_HANDLER: Mutex<RefCell<Option<Handler>>> = Mutex::new(RefCell::new(None));
+static B_HANDLER: Mutex<RefCell<Option<Handler>>> = Mutex::new(RefCell::new(None));
+static BOTH_HANDLER: Mutex<RefCell<Option<Handler>>> = Mutex::new(RefCell::new(None));
 
 struct Handler(Box<Fn() -> ()>);
 
@@ -58,32 +57,38 @@ crate fn init_buttons(
         *GPIOTE.borrow(cs).borrow_mut() = Some(gpiote);
         *A_PIN.borrow(cs).borrow_mut() = Some(a_pin);
         *B_PIN.borrow(cs).borrow_mut() = Some(b_pin);
-        *A_HANDLERS.borrow(cs).borrow_mut() = Some(Vec::with_capacity(8));
-        *B_HANDLERS.borrow(cs).borrow_mut() = Some(Vec::with_capacity(8));
-        *BOTH_HANDLERS.borrow(cs).borrow_mut() = Some(Vec::with_capacity(8));
+        *A_HANDLER.borrow(cs).borrow_mut() = None;
+        *B_HANDLER.borrow(cs).borrow_mut() = None;
+        *BOTH_HANDLER.borrow(cs).borrow_mut() = None;
     });
 }
 
 crate fn gpiote_handler() {
     cortex_m::interrupt::free(|cs| {
-        if let (
-            Some(ref mut gpiote),
-            Some(ref mut a_handlers),
-            Some(ref mut b_handlers),
-            Some(ref mut both_handlers),
-        ) = (
-            GPIOTE.borrow(cs).borrow_mut().deref_mut(),
-            A_HANDLERS.borrow(cs).borrow_mut().deref_mut(),
-            B_HANDLERS.borrow(cs).borrow_mut().deref_mut(),
-            BOTH_HANDLERS.borrow(cs).borrow_mut().deref_mut(),
-        ) {
+        if let Some(ref mut gpiote) = GPIOTE.borrow(cs).borrow_mut().deref_mut() {
+            let a_handler = &*A_HANDLER.borrow(cs).borrow_mut();
+            let b_handler = &*B_HANDLER.borrow(cs).borrow_mut();
+            let both_handler = &*BOTH_HANDLER.borrow(cs).borrow_mut();
+
             let a = gpiote.events_in[0].read().bits() != 0;
             let b = gpiote.events_in[1].read().bits() != 0;
 
             match (a, b) {
-                (true, true) => both_handlers.iter().for_each(|f| f()),
-                (true, false) => a_handlers.iter().for_each(|f| f()),
-                (false, true) => b_handlers.iter().for_each(|f| f()),
+                (true, true) => {
+                    if let Some(both_handler) = both_handler {
+                        both_handler();
+                    }
+                }
+                (true, false) => {
+                    if let Some(a_handler) = a_handler {
+                        a_handler();
+                    }
+                }
+                (false, true) => {
+                    if let Some(b_handler) = b_handler {
+                        b_handler();
+                    }
+                }
                 _ => unreachable!(),
             }
 
@@ -97,18 +102,20 @@ macro_rules! handlers {
     ($($name:ident $var:path),+ $(,)*) => {
         $( pub fn $name(f: impl Fn() -> () + 'static) {
             cortex_m::interrupt::free(|cs| {
-                if let Some(ref mut handlers) = $var.borrow(cs).borrow_mut().deref_mut() {
-                    handlers.push(Handler::new(f))
+                if $var.borrow(cs).borrow_mut().deref_mut().is_some() {
+                    panic!("Only one handler is allowed");
                 }
+
+                *$var.borrow(cs).borrow_mut() = Some(Handler::new(f));
             })
         })+
     };
 }
 
 handlers! {
-    register_a_button_handler A_HANDLERS,
-    register_b_button_handler B_HANDLERS,
-    register_both_button_handler BOTH_HANDLERS,
+    register_a_button_handler A_HANDLER,
+    register_b_button_handler B_HANDLER,
+    register_both_button_handler BOTH_HANDLER,
 }
 
 /*

@@ -1,9 +1,7 @@
 use cortex_m::interrupt::Mutex;
 
-use nrf51::RTC1;
-
 use hal::gpio::gpio::{
-    PIN10, PIN11, PIN12, PIN13, PIN14, PIN15, PIN4, PIN5, PIN6, PIN7, PIN8, PIN9, PIN,
+    PIN, PIN10, PIN11, PIN12, PIN13, PIN14, PIN15, PIN4, PIN5, PIN6, PIN7, PIN8, PIN9,
 };
 use hal::gpio::{Output, PushPull};
 use hal::prelude::*;
@@ -63,6 +61,7 @@ pub static DISPLAY: Mutex<RefCell<Option<Display>>> = Mutex::new(RefCell::new(No
 static DRIVER: Mutex<RefCell<Option<Driver>>> = Mutex::new(RefCell::new(None));
 static ANIMATION_DONE: AtomicBool = AtomicBool::new(false);
 
+#[allow(clippy::too_many_arguments)]
 pub fn init_display(
     row1: PIN13<Output<PushPull>>,
     row2: PIN14<Output<PushPull>>,
@@ -93,7 +92,7 @@ pub fn init_display(
     })
 }
 
-crate fn refresh_display(counter: u32) {
+crate fn refresh_display(_counter: u32) {
     cortex_m::interrupt::free(|cs| {
         if let (Some(ref mut display), Some(ref mut driver)) = (
             DISPLAY.borrow(cs).borrow_mut().deref_mut(),
@@ -107,20 +106,21 @@ crate fn refresh_display(counter: u32) {
 
 crate fn refresh_animation(counter: u32) {
     cortex_m::interrupt::free(|cs| {
-        if let (Some(ref mut display), Some(ref mut driver), Some(ref mut scheduler)) = (
+        if let (Some(ref mut display), Some(ref mut scheduler)) = (
             DISPLAY.borrow(cs).borrow_mut().deref_mut(),
-            DRIVER.borrow(cs).borrow_mut().deref_mut(),
             rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut(),
         ) {
             let mut unset = false;
             if let Some(ref mut animator) = display.animator {
                 if let Some(frame) = animator.next_screen() {
                     scheduler.unset_interrupt(RTCInterrupt::Compare0);
-                    scheduler.set_cmp_interrupt(
-                        RTCInterrupt::Compare0,
-                        refresh_animation,
-                        (counter + (frame.length / 5)) % (2_u32.pow(24) - 1),
-                    );
+                    scheduler
+                        .set_cmp_interrupt(
+                            RTCInterrupt::Compare0,
+                            refresh_animation,
+                            (counter + (frame.length / 5)) % (2_u32.pow(24) - 1),
+                        )
+                        .unwrap();
                     display.image = Some(frame.image.into());
                 } else {
                     scheduler.unset_interrupt(RTCInterrupt::Compare0);
@@ -141,15 +141,16 @@ crate fn refresh_animation(counter: u32) {
 
 pub fn display_image(img: impl Into<DisplayImage>) {
     cortex_m::interrupt::free(|cs| {
-        if let (Some(ref mut display), Some(ref mut driver), Some(ref mut scheduler)) = (
+        if let (Some(ref mut display), Some(ref mut scheduler)) = (
             DISPLAY.borrow(cs).borrow_mut().deref_mut(),
-            DRIVER.borrow(cs).borrow_mut().deref_mut(),
             rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut(),
         ) {
             display.animator = None;
             display.image = Some(img.into().into());
             scheduler.unset_interrupt(RTCInterrupt::Tick);
-            scheduler.set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display);
+            scheduler
+                .set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display)
+                .unwrap();
         }
     });
 }
@@ -157,9 +158,8 @@ pub fn display_image(img: impl Into<DisplayImage>) {
 pub fn run_animation(mut animator: impl animation::Animate + 'static, block: bool) {
     if let Some(frame) = animator.next_screen() {
         cortex_m::interrupt::free(|cs| {
-            if let (Some(ref mut display), Some(ref mut driver), Some(ref mut scheduler)) = (
+            if let (Some(ref mut display), Some(ref mut scheduler)) = (
                 DISPLAY.borrow(cs).borrow_mut().deref_mut(),
-                DRIVER.borrow(cs).borrow_mut().deref_mut(),
                 rtc::SCHEDULER.borrow(cs).borrow_mut().deref_mut(),
             ) {
                 ANIMATION_DONE.store(false, core::sync::atomic::Ordering::Relaxed);
@@ -168,11 +168,15 @@ pub fn run_animation(mut animator: impl animation::Animate + 'static, block: boo
                 display.animator = Some(Animator::new(animator));
 
                 scheduler.unset_interrupt(RTCInterrupt::Tick);
-                scheduler.set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display);
+                scheduler
+                    .set_agnostic_interrupt(RTCInterrupt::Tick, refresh_display)
+                    .unwrap();
 
                 let compare = (scheduler.current_counter() + (length / 5)) % (2_u32.pow(24) - 1);
                 scheduler.unset_interrupt(RTCInterrupt::Compare0);
-                scheduler.set_cmp_interrupt(RTCInterrupt::Compare0, refresh_animation, compare);
+                scheduler
+                    .set_cmp_interrupt(RTCInterrupt::Compare0, refresh_animation, compare)
+                    .unwrap();
             }
         });
 
@@ -183,6 +187,7 @@ pub fn run_animation(mut animator: impl animation::Animate + 'static, block: boo
 }
 
 impl Driver {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         row1: PIN13<Output<PushPull>>,
         row2: PIN14<Output<PushPull>>,

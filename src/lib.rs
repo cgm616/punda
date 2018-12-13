@@ -1,9 +1,8 @@
 #![no_std]
-#![feature(extern_prelude)]
 #![feature(alloc)]
 #![feature(lang_items)]
-#![feature(non_modrs_mods)]
 #![feature(const_fn)]
+#![feature(tool_lints)]
 #![feature(crate_visibility_modifier)]
 #![allow(dead_code)]
 
@@ -17,7 +16,7 @@ use rt::ExceptionFrame;
 #[macro_use(interrupt)]
 extern crate nrf51;
 extern crate nb;
-extern crate nrf51_hal as hal;
+pub extern crate nrf51_hal as hal;
 extern crate panic_semihosting;
 
 use hal::prelude::*;
@@ -120,6 +119,7 @@ fn __start() -> ! {
         }
     }
 
+    #[allow(clippy::empty_loop)]
     loop {}
 }
 

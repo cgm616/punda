@@ -252,18 +252,16 @@ impl Animate for ScrollingText {
                 SPACE,
                 ScrollingText::char_to_image(self.text.as_bytes()[0] as char),
             )
+        } else if self.text_index + 1 >= self.text.len() {
+            (
+                ScrollingText::char_to_image(self.text.as_bytes()[self.text.len() - 1] as char),
+                SPACE,
+            )
         } else {
-            if self.text_index + 1 >= self.text.len() {
-                (
-                    ScrollingText::char_to_image(self.text.as_bytes()[self.text.len() - 1] as char),
-                    SPACE,
-                )
-            } else {
-                (
-                    ScrollingText::char_to_image(self.text.as_bytes()[self.text_index] as char),
-                    ScrollingText::char_to_image(self.text.as_bytes()[self.text_index + 1] as char),
-                )
-            }
+            (
+                ScrollingText::char_to_image(self.text.as_bytes()[self.text_index] as char),
+                ScrollingText::char_to_image(self.text.as_bytes()[self.text_index + 1] as char),
+            )
         };
 
         Some(match self.column_index {
@@ -621,7 +619,7 @@ impl Animate for ScrollingText {
                 if !self.scrolled_on {
                     self.scrolled_on = true;
                 } else {
-                    self.text_index = self.text_index + 1;
+                    self.text_index += 1;
                 }
                 if self.text_index >= self.text.len() {
                     return None;
@@ -690,8 +688,9 @@ impl Animate for ScrollingText {
     fn frames(&self) -> u32 {
         self.text
             .chars()
-            .map(|c| ScrollingText::char_to_image(c))
+            .map(ScrollingText::char_to_image)
             .map(|img| (img.column_width() as u32) + 2)
-            .sum::<u32>() + 5
+            .sum::<u32>()
+            + 5
     }
 }

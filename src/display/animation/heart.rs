@@ -1,5 +1,6 @@
 use super::{super::DisplayImage, Animate, Frame};
 
+#[derive(Default)]
 pub struct Heart(u32);
 
 impl Heart {
@@ -28,7 +29,7 @@ impl Heart {
     ]);
 
     pub fn new() -> Self {
-        Heart(0)
+        Default::default()
     }
 }
 
@@ -54,7 +55,7 @@ impl Animate for Heart {
             _ => None,
         };
 
-        self.0 = self.0 + 1;
+        self.0 += 1;
 
         frame
     }

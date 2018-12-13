@@ -20,7 +20,7 @@ pub fn measure_temp_rational(p: &mut TEMP) -> i32 {
 
 /// The `measure_temp_float` function takes a `nrf51::TEMP` peripheral and a
 /// `Degrees` unit and returns a float temperature.
-pub fn measure_temp_float(p: &mut TEMP, mode: Degrees) -> f32 {
+pub fn measure_temp_float(p: &mut TEMP, mode: &Degrees) -> f32 {
     match mode {
         Degrees::Celsius => (measure_temp_rational(p) as f32) / 4.0,
         Degrees::Fahrenheit => (measure_temp_rational(p) as f32) * 0.45 + 32.0,
