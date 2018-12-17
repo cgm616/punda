@@ -1,16 +1,23 @@
-easy_microbit
-========
+punda: programming the micro:bit with Rust
+=====
 
-This is a crate that provides a high level, easy to use interface for interacting with the [BBC micro:bit](http://microbit.org/), a small, handheld micro-controller designed for teaching and learning computer science.
+[![Travis](https://img.shields.io/travis/cgm616/punda/master.svg)](https://travis-ci.org/cgm616/punda)
+[![License](https://img.shields.io/badge/license-mit-blue.svg)](https://github.com/cgm616/punda/blob/master/LICENSE)
 
-The intention of `easy_microbit` is to complement the other development environments already available for the micro:bit: the Javascript Blocks editor and MicroPython.
-Specifically, `easy_microbit` brings the Rust Programming Language's static typing, ergonomics, and functional constructs to the table.
-In addition to being useful for teaching programming to those unfamiliar, `easy_microbit` is also a good way to learn Rust: two equivalent micro:bit programs can be compared across Javascript, Blocks, Python, and Rust to highlight the similarities and differences between each.
+Punda provides a high level, easy to use interface for interacting with the [BBC micro:bit](http://microbit.org/), a small, handheld micro-controller designed for teaching and learning computer science, using the [Rust Programming Language](https://www.rust-lang.org/).
 
-For examples of using the `easy_microbit` crate, check the `examples/` directory in this repository.
+The intention of `punda` is to complement the other development environments already available for the micro:bit: the Javascript Blocks editor and MicroPython.
+Specifically, `punda` brings Rust's static typing, ergonomics, and functional constructs to the table.
+In addition to being useful for teaching programming to those unfamiliar, `punda` is also a good way to learn Rust: two equivalent micro:bit programs can be compared across Javascript, Blocks, Python, and Rust to highlight the similarities and differences between each.
+
+For examples of using the `punda` crate, check the `examples/` directory in this repository.
 With the correct development environment set up, any example can be run on the micro:bit with `cargo run --example [name]`.
 
-# Development dependencies
+## Under construction
+Note that this crate's documentation, API, and entire design is still up for determination.
+As a hobby project, I don't have as much time to work on it as I wish I could.
+
+## Development dependencies
 
 To develop applications using this library, the following tools must be installed:
 
@@ -23,7 +30,7 @@ When the above tools are installed, perform the following setup to start a new b
 First, install the nightly Rust toolchain.
 
 ```
-> rustup install nightly-2018-08-06
+> rustup install nightly-2018-09-27
 ```
 
 Next, install the `thumbv6m-none-eabi` Rust target.
