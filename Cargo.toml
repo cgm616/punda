@@ -16,7 +16,7 @@ version = "0.5.2"
 
 [dependencies.nrf51-hal]
 features = ["rt"]
-version = "0.5.5"
+version = "0.6.0"
 
 [patch.crates-io]
 nrf51 = { git = "https://github.com/therealprof/nrf51.git", features = ["rt"] }
