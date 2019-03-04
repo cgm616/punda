@@ -81,19 +81,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "easy_microbit"
-version = "0.1.0"
-dependencies = [
- "alloc-cortex-m 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "cortex-m 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "cortex-m-rt 0.5.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "nb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "nrf51 0.5.2 (git+https://github.com/therealprof/nrf51.git)",
- "nrf51-hal 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "panic-semihosting 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "embedded-hal"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -115,7 +102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "nrf51"
 version = "0.5.2"
-source = "git+https://github.com/therealprof/nrf51.git#498ad0b8fa1b990b92739392b8894aafcf502fff"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bare-metal 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cortex-m 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -132,7 +119,7 @@ dependencies = [
  "cortex-m 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "embedded-hal 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "nb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "nrf51 0.5.2 (git+https://github.com/therealprof/nrf51.git)",
+ "nrf51 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -151,6 +138,19 @@ version = "0.4.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "punda"
+version = "0.1.0"
+dependencies = [
+ "alloc-cortex-m 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cortex-m 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cortex-m-rt 0.5.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nrf51 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nrf51-hal 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "panic-semihosting 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -260,7 +260,7 @@ dependencies = [
 "checksum embedded-hal 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9880e55238830314d41d88f1ac7a819d495799c3cc3bc392cc172bab26428c33"
 "checksum linked_list_allocator 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "655d57c71827fe0891ce72231b6aa5e14033dae3f604609e6a6f807267c1678d"
 "checksum nb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "69f380b5fe9fab8c0d7a6a99cda23e2cc0463bedb2cbc3aada0813b98496ecdc"
-"checksum nrf51 0.5.2 (git+https://github.com/therealprof/nrf51.git)" = "<none>"
+"checksum nrf51 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "82b0a26c925af2103121e4b6d7e79d6c5308dcda25881ab1cd016dac7221b386"
 "checksum nrf51-hal 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)" = "5851e70661f6bea0f1e65b5e66232b514b30fb89b88ab35b6bb2e0f4d683bdf3"
 "checksum panic-semihosting 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a647d81e7b00f69deac766cd96d69fc11c95c18657d2448b539ae93e4c558689"
 "checksum proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)" = "77619697826f31a02ae974457af0b29b723e5619e113e9397b8b82c6bd253f09"

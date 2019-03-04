@@ -1,7 +1,9 @@
 [package]
-name = "easy_microbit"
+name = "punda"
 version = "0.1.0"
-authors = ["cgm616 <cgm616@me.com>"]
+authors = ["cgm616 <c@cgm616.me>"]
+license = "MIT"
+description = "An easy-to-use runtime for the BBC micro:bit, WIP."
 
 [dependencies]
 panic-semihosting = "0.5.1"
@@ -17,9 +19,6 @@ version = "0.5.2"
 [dependencies.nrf51-hal]
 features = ["rt"]
 version = "0.5.5"
-
-[patch.crates-io]
-nrf51 = { git = "https://github.com/therealprof/nrf51.git", features = ["rt"] }
 
 [profile.dev]
 debug = true

@@ -4,8 +4,8 @@ rustflags = [
   "-C", "link-arg=-Tlink.x",
   #"-C", "linker=arm-none-eabi-ld",
   #"-Z", "linker-flavor=ld",
-  "-Z", "pre-link-arg=-Wl,--start-group", # <- ADD
-  "-C", "link-arg=-Wl,--end-group", # <- ADD
+  #"-Z", "pre-link-arg=-Wl,--start-group", # <- ADD
+  #"-C", "link-arg=-Wl,--end-group", # <- ADD
 ]
 
 [build]
