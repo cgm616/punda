@@ -6,7 +6,7 @@ os:
   - osx
 
 rust:
-  - nightly-2018-09-27
+  - nightly-2019-03-22
 
 script:
 - rustup target add thumbv6m-none-eabi
