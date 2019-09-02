@@ -6,7 +6,7 @@ license = "MIT"
 description = "An easy-to-use runtime for the BBC micro:bit, WIP."
 
 [dependencies]
-panic-semihosting = "0.5.1"
+panic-semihosting = "0.5.3"
 nrf51 = "0.5.0"
 cortex-m-rt = "0.5.1"
 alloc-cortex-m = "0.3.5"
