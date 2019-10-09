@@ -8,7 +8,7 @@ description = "An easy-to-use runtime for the BBC micro:bit, WIP."
 [dependencies]
 panic-semihosting = "0.5.1"
 nrf51 = "0.5.0"
-cortex-m-rt = "0.5.1"
+cortex-m-rt = "0.6.8"
 alloc-cortex-m = "0.3.5"
 nb = "0.1.2"
 
