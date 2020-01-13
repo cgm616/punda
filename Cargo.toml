@@ -14,7 +14,7 @@ nb = "0.1.2"
 
 [dependencies.cortex-m]
 features = ["inline-asm"]
-version = "0.6.1"
+version = "0.6.2"
 
 [dependencies.nrf51-hal]
 features = ["rt"]
