@@ -18,7 +18,7 @@ version = "0.6.1"
 
 [dependencies.nrf51-hal]
 features = ["rt"]
-version = "0.5.5"
+version = "0.6.2"
 
 [profile.dev]
 debug = true
