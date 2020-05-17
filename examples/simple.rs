@@ -1,12 +1,8 @@
 #![no_std]
 #![no_main]
 
+punda::punda!(init: init);
 
-extern crate punda;
-use punda::start;
-
-start!(main);
-
-fn main() -> ! {
-    loop {}
+fn init() -> () {
+    return;
 }

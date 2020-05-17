@@ -3,8 +3,8 @@
 extern crate panic_semihosting;
 
 #[macro_export]
-macro_rules! start {
-    ($path:ident) => {
+macro_rules! punda {
+    (init: $path:ident) => {
         use cortex_m_semihosting::{debug, hprintln};
         use rtfm::app;
         use microbit::hal::{lo_res_timer::{LoResTimer, FREQ_16HZ}, nrf51};
@@ -16,7 +16,7 @@ macro_rules! start {
             }
 
             #[init]
-            fn init(cx: init::Context) -> init::LateResources {
+            fn __init(cx: __init::Context) -> __init::LateResources {
                 let mut p: nrf51::Peripherals = cx.device;
 
                 // Starting the low-frequency clock (needed for RTC to work)
@@ -31,11 +31,14 @@ macro_rules! start {
                 rtc0.enable_tick_interrupt();
                 rtc0.start();
 
-                init::LateResources { timer: rtc0 }
+                let f: fn() -> () = $path;
+                f();
+
+                __init::LateResources { timer: rtc0 }
             }
 
             #[task(binds = RTC0, priority = 1, resources = [timer])]
-            fn rtc0(cx: rtc0::Context) {
+            fn __rtc0(cx: __rtc0::Context) {
                 static mut CALLED: u32 = 0;
 
                 &cx.resources.timer.clear_tick_event();
@@ -46,7 +49,7 @@ macro_rules! start {
             }
 
             #[idle]
-            fn idle(cx: idle::Context) -> ! {
+            fn __idle(cx: __idle::Context) -> ! {
                 loop{}
             }
         };
