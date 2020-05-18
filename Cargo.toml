@@ -8,7 +8,8 @@ edition = "2018"
 panic-semihosting = "0.5.3"
 cortex-m-semihosting = "0.3.5"
 cortex-m-rtfm = "0.5.1"
-microbit = "0.8.0"
+microbit = { git = "https://github.com/therealprof/microbit" }
+heapless = "0.5.5"
 
 [profile.dev]
 debug = true
