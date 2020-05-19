@@ -1,8 +1,10 @@
 #![no_std]
 #![no_main]
 
-punda::punda!(init: init);
+punda::punda!(init: init, idle: idle);
 
-fn init(cx: &mut punda::context::UserContext) {
-    hprintln!("Hello from the BBC micro:bit");
+fn init(cx: &mut punda::context::UserContext) {}
+
+fn idle(cx: &mut punda::context::UserContext) -> ! {
+    loop {}
 }

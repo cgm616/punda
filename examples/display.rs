@@ -1,22 +1,22 @@
 #![no_std]
 #![no_main]
 
-punda::punda!(init: init);
-
 use punda::display::{self, image::GreyscaleImage};
 
-fn init(cx: &mut punda::context::UserContext) {
-    hprintln!("Showing image");
+punda::punda!(init: init, idle: idle);
 
-    let image = GreyscaleImage::new(&[
-        [0, 7, 0, 7, 0],
-        [7, 3, 7, 3, 7],
-        [7, 3, 3, 3, 7],
-        [0, 7, 3, 7, 0],
-        [0, 0, 7, 0, 0],
+fn init(cx: &mut punda::context::UserContext) {
+    let large = GreyscaleImage::new(&[
+        [0, 5, 6, 6, 0],
+        [6, 5, 0, 0, 0],
+        [6, 4, 0, 0, 0],
+        [6, 5, 0, 0, 0],
+        [0, 5, 6, 6, 0],
     ]);
 
-    display::show(cx, &image);
+    display::show(cx, &large);
+}
 
-    hprintln!("Done");
+fn idle(cx: &mut punda::context::UserContext) -> ! {
+    loop {}
 }

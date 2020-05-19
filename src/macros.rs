@@ -1,9 +1,11 @@
 #[macro_export]
 macro_rules! punda {
-    (init: $path:ident) => {
+    (init: $init_path:ident, idle: $idle_path:ident) => {
         use cortex_m_semihosting::{debug, hprintln};
         use heapless::{consts::*, spsc};
-        use microbit::{hal::nrf51, display::{MicrobitDisplayTimer, MicrobitFrame}};
+        use microbit::{hal::{nrf51, delay::DelayTimer, hi_res_timer::TimerFrequency::Freq62500Hz},
+            display::{MicrobitDisplayTimer, MicrobitFrame}
+        };
         use punda::{
             context::UserContext,
             display::{DisplayBackend},
@@ -20,11 +22,12 @@ macro_rules! punda {
                 consumer: Consumer,
                 display_timer: MicrobitDisplayTimer<nrf51::TIMER1>,
                 display: DisplayBackend,
+                user_timer: DelayTimer<nrf51::TIMER0>,
                 gpio: nrf51::GPIO,
                 uart: nrf51::UART0,
             }
 
-            #[init(spawn = [__user_init])]
+            #[init(spawn = [__user_init, __user_idle])]
             fn __init(cx: __init::Context) -> __init::LateResources {
                 static mut queue: Queue = spsc::Queue(heapless::i::Queue::u8());
 
@@ -37,6 +40,8 @@ macro_rules! punda {
 
                 let mut display = DisplayBackend::new();
 
+                let mut user_timer = DelayTimer::new(p.TIMER0, Freq62500Hz);
+
                 p.GPIO.pin_cnf[24].write(|w| w.pull().pullup().dir().output());
                 p.GPIO.pin_cnf[25].write(|w| w.pull().disabled().dir().input());
 
@@ -46,24 +51,39 @@ macro_rules! punda {
                 p.UART0.baudrate.write(|w| w.baudrate().baud115200());
                 p.UART0.enable.write(|w| w.enable().enabled());
 
-                cx.spawn.__user_init().unwrap();
+                cx.spawn.__user_init().expect("can't spawn __user_init");
+
+                cx.spawn.__user_idle().expect("can't spawn __user_idle");
 
                 __init::LateResources {
                     producer,
                     consumer,
                     display_timer,
                     display,
+                    user_timer,
                     gpio: p.GPIO,
                     uart: p.UART0,
                 }
             }
 
-            #[task(resources = [producer])]
+            #[task(priority = 1, resources = [producer, user_timer])]
             fn __user_init(cx: __user_init::Context) {
                 let mut user_context = UserContext {
                     _producer: cx.resources.producer,
+                    _timer: cx.resources.user_timer,
                 };
-                let f: for<'r> fn(&'r mut UserContext) -> () = $path;
+                let f: for<'r> fn(&'r mut UserContext) -> () = $init_path;
+                f(&mut user_context);
+            }
+
+            #[task(priority = 1, resources = [producer, user_timer])]
+            fn __user_idle(cx: __user_idle::Context) {
+                let mut user_context = UserContext {
+                    _producer: cx.resources.producer,
+                    _timer: cx.resources.user_timer
+                };
+
+                let f: for<'r> fn(&'r mut UserContext) -> ! = $idle_path;
                 f(&mut user_context);
             }
 
@@ -101,6 +121,7 @@ macro_rules! punda {
                     }
                 }
             }
+
             extern "C" {
                 fn SWI0();
                 fn SWI1();
