@@ -3,7 +3,7 @@
 
 use punda::display::{self, image::GreyscaleImage};
 
-punda::punda!(init: init, idle: idle);
+punda::punda!(init = init);
 
 fn init(cx: &mut punda::context::UserContext) {
     let large = GreyscaleImage::new(&[
@@ -15,8 +15,4 @@ fn init(cx: &mut punda::context::UserContext) {
     ]);
 
     display::show(cx, &large);
-}
-
-fn idle(cx: &mut punda::context::UserContext) -> ! {
-    loop {}
 }

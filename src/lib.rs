@@ -2,6 +2,7 @@
 
 extern crate panic_semihosting;
 
+pub mod button;
 pub mod context;
 pub mod delay;
 pub mod display;

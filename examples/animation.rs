@@ -6,7 +6,7 @@ use punda::{
     display::{self, image::GreyscaleImage},
 };
 
-punda::punda!(init: init, idle: idle);
+punda::punda!(init = init, idle = idle);
 
 fn init(cx: &mut punda::context::UserContext) {}
 
