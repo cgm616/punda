@@ -2,6 +2,7 @@
 pub enum Button {
     A,
     B,
+    Both,
 }
 
 #[derive(Debug)]

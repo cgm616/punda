@@ -16,8 +16,10 @@ fn button_handler(cx: &mut punda::context::UserContext, button: Button, directio
     let message = match (button, direction) {
         (Button::A, State::Released) => "A released",
         (Button::B, State::Released) => "B released",
+        (Button::Both, State::Released) => "both released",
         (Button::A, State::Pushed) => "A pushed",
         (Button::B, State::Pushed) => "B pushed",
+        (Button::Both, State::Pushed) => "both pushed",
     };
 
     serial::println(cx, message.into());

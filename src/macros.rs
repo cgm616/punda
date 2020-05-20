@@ -186,9 +186,13 @@ macro_rules! punda {
                     if b_change {
                         cx.spawn.__button_handler(_Button::B, B.state).unwrap();
                     }
+
+                    if a_change && b_change && (A.state == B.state) {
+                        cx.spawn.__button_handler(_Button::Both, A.state).unwrap();
+                    }
                 }
 
-                #[task(priority = 1, resources = [producer, user_timer])]
+                #[task(priority = 1, resources = [producer, user_timer], capacity = 6)]
                 fn __button_handler(mut cx: __button_handler::Context, button: _Button, direction: _State) {
                     let mut user_context = UserContext {
                         _producer: cx.resources.producer,
