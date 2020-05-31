@@ -8,11 +8,11 @@ use punda::{
 
 punda::punda!(init = init, button_handler = button_handler);
 
-fn init(cx: &mut punda::context::UserContext) {
+fn init(cx: &mut punda::context::InitContext) {
     serial::println(cx, "Press a button".into());
 }
 
-fn button_handler(cx: &mut punda::context::UserContext, button: Button, direction: State) {
+fn button_handler(cx: &mut punda::context::HandlerContext, button: Button, direction: State) {
     let message = match (button, direction) {
         (Button::A, State::Released) => "A released",
         (Button::B, State::Released) => "B released",

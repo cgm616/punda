@@ -11,7 +11,7 @@ macro_rules! punda {
             display::{MicrobitDisplayTimer, MicrobitFrame}
         };
         use punda::{
-            context::UserContext,
+            context::*,
             display::{DisplayBackend},
             syscall::{Consumer, Producer, Queue, Syscall},
             serial::UART0Buffer,
@@ -33,7 +33,7 @@ macro_rules! punda {
                 uart: nrf51::UART0,
             }
 
-            #[init(spawn = [__user_init, __user_idle])]
+            #[init(spawn = [__user_init])]
             fn __init(cx: __init::Context) -> __init::LateResources {
                 static mut queue: Queue = spsc::Queue(heapless::i::Queue::u8());
 
@@ -87,7 +87,7 @@ macro_rules! punda {
 
                 cx.spawn.__user_init().expect("can't spawn __user_init");
 
-                cx.spawn.__user_idle().expect("can't spawn __user_idle");
+                // cx.spawn.__user_idle().expect("can't spawn __user_idle");
 
                 __init::LateResources {
                     producer,
@@ -103,27 +103,12 @@ macro_rules! punda {
 
             #[task(priority = 1, resources = [producer, user_timer])]
             fn __user_init(cx: __user_init::Context) {
-                let mut user_context = UserContext {
+                let mut user_context = InitContext {
                     _producer: cx.resources.producer,
                     _timer: cx.resources.user_timer,
                 };
-                let f: for<'r> fn(&'r mut UserContext) -> () = $init_path;
+                let f: for<'r> fn(&'r mut InitContext) -> () = $init_path;
                 f(&mut user_context);
-            }
-
-            #[task(priority = 1, resources = [producer, user_timer])]
-            fn __user_idle(cx: __user_idle::Context) {
-                let mut user_context = UserContext {
-                    _producer: cx.resources.producer,
-                    _timer: cx.resources.user_timer
-                };
-
-                $(
-                    let f: for<'r> fn(&'r mut UserContext) -> ! = $idle_path;
-                    f(&mut user_context);
-                )?
-
-                loop {}
             }
 
             #[task(binds = TIMER1, priority = 4, resources = [gpio, display_timer, display])]
@@ -169,12 +154,9 @@ macro_rules! punda {
 
                     cx.resources.general_timer.clear_tick_event();
 
-                    let mut a_low = false;
-                    let mut b_low = false;
-                    cx.resources.gpio.lock(|gpio| {
-                        a_low = gpio.in_.read().pin17().is_low();
-                        b_low = gpio.in_.read().pin26().is_low();
-                    });
+                    let (a_low, b_low) = cx.resources.gpio.lock(|gpio|
+                        (gpio.in_.read().pin17().is_low(), gpio.in_.read().pin26().is_low())
+                    );
 
                     let a_change = A.measure(a_low);
                     let b_change = B.measure(b_low);
@@ -187,22 +169,36 @@ macro_rules! punda {
                         cx.spawn.__button_handler(_Button::B, B.state).unwrap();
                     }
 
-                    if a_change && b_change && (A.state == B.state) {
-                        cx.spawn.__button_handler(_Button::Both, A.state).unwrap();
-                    }
+                    // TODO: properly handle both buttons being pressed
+                    //
+                    // if a_change && b_change && (A.state == B.state) {
+                    //     cx.spawn.__button_handler(_Button::Both, A.state).unwrap();
+                    // }
                 }
 
-                #[task(priority = 1, resources = [producer, user_timer], capacity = 6)]
+                #[task(priority = 1, resources = [producer], capacity = 6)]
                 fn __button_handler(mut cx: __button_handler::Context, button: _Button, direction: _State) {
-                    let mut user_context = UserContext {
+                    let mut user_context = HandlerContext {
                         _producer: cx.resources.producer,
-                        _timer: cx.resources.user_timer
                     };
 
-                    let f: for<'r> fn(&'r mut UserContext, _Button, _State) -> () = $button_path;
+                    let f: for<'r> fn(&'r mut HandlerContext, _Button, _State) -> () = $button_path;
                     f(&mut user_context, button, direction);
                 }
             )?
+
+            #[idle(resources = [producer, user_timer])]
+            fn __idle(cx: __idle::Context) -> ! {
+                let mut user_context = IdleContext {
+                    _producer: cx.resources.producer,
+                };
+
+                //let f: for<'r> fn(&'r mut IdleContext) -> ! = $idle_path;
+                //f(&mut user_context);
+                $(($idle_path)(&mut user_context);)?
+
+                loop {}
+            }
 
             extern "C" {
                 fn SWI0();

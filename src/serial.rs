@@ -1,15 +1,15 @@
 use super::{
-    context::UserContext,
-    syscall::{syscall, Producer, Syscall},
+    context::*,
+    syscall::{self, Syscall},
 };
 use heapless::{consts::*, String};
 use microbit::{GPIO, UART0};
 
-pub fn print(cx: &mut UserContext, string: String<U50>) {
-    syscall(cx, Syscall::SerialPrint(string));
+pub fn print<C: SyscallCapable>(cx: &mut C, string: String<U50>) {
+    syscall::syscall(cx, Syscall::SerialPrint(string));
 }
 
-pub fn println(cx: &mut UserContext, string: String<U48>) {
+pub fn println<C: SyscallCapable>(cx: &mut C, string: String<U48>) {
     let mut new: String<U50> = String::new();
     new.push_str(&string);
     new.push_str("\n\r");

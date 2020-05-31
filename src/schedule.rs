@@ -1,4 +1,3 @@
-use cortex_m_semihosting::hprintln;
 use heapless::{binary_heap::Min, consts::*, BinaryHeap};
 use microbit::hal::{
     lo_res_timer::{self, LoResTimer, RtcCc, RtcFrequency},
@@ -87,7 +86,6 @@ impl Scheduler {
 
     /*
     fn set_compare(&mut self, ms: u32) -> u32 {
-        //hprintln!("{:?}", self.queue);
         // Get the current counter value and calculate when the task will trigger.
         let current = self.timer.read_counter();
         let trigger = (current + (Self::TPMS * ms)) % Self::MAX;

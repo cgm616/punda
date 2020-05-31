@@ -64,3 +64,5 @@ impl History {
         }
     }
 }
+
+// TODO: add unit tests

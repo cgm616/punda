@@ -3,4 +3,4 @@
 
 punda::punda!(init = init);
 
-fn init(cx: &mut punda::context::UserContext) {}
+fn init(_cx: &mut punda::context::InitContext) {}

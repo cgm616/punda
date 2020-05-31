@@ -5,7 +5,7 @@ use punda::display::{self, image::GreyscaleImage};
 
 punda::punda!(init = init);
 
-fn init(cx: &mut punda::context::UserContext) {
+fn init(cx: &mut punda::context::InitContext) {
     let large = GreyscaleImage::new(&[
         [0, 5, 6, 6, 0],
         [6, 5, 0, 0, 0],

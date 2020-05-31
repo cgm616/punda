@@ -5,12 +5,13 @@ use punda::{
     delay,
     display::{self, image::GreyscaleImage},
 };
+use rtfm::Mutex;
 
 punda::punda!(init = init, idle = idle);
 
-fn init(cx: &mut punda::context::UserContext) {}
+fn init(_cx: &mut punda::context::InitContext) {}
 
-fn idle(cx: &mut punda::context::UserContext) -> ! {
+fn idle<P: Mutex<T = Producer>>(cx: &mut punda::context::IdleContext<P>) -> ! {
     loop {
         display::show(cx, &BLANK);
 

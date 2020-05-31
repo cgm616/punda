@@ -1,6 +1,6 @@
-use super::context::UserContext;
+use super::context::*;
 use microbit::hal::prelude::*;
 
-pub fn delay_ms(cx: &mut UserContext, ms: u32) {
-    cx._timer.delay_ms(ms);
+pub fn delay_ms<C: DelayCapable>(cx: &mut C, ms: u32) {
+    cx.get_timer().delay_ms(ms);
 }
